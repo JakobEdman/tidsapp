@@ -13,52 +13,51 @@ export default function Navbar({ user, onSignOut }: NavbarProps) {
   const pathname = usePathname();
 
   return (
-    <nav className="border-b bg-white">
-      <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-6">
+    <nav className="border-b bg-white sticky top-0 z-10">
+      <div className="max-w-3xl mx-auto px-4 py-3">
+        {/* Top row: logo + sign out */}
+        <div className="flex items-center justify-between mb-2">
           <Link href="/" className="text-xl font-bold text-blue-600">
-            Tidsapp AI
+            Tidsapp
           </Link>
           {user && (
-            <div className="flex gap-4 text-sm">
-              <Link
-                href="/"
-                className={
-                  pathname === "/"
-                    ? "text-blue-600 font-medium"
-                    : "text-gray-500 hover:text-gray-700"
-                }
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-400 hidden sm:inline">
+                {user.email}
+              </span>
+              <button
+                onClick={onSignOut}
+                className="text-xs text-gray-500 hover:text-gray-700 border rounded-lg px-2.5 py-1"
               >
-                Tidsregistrering
-              </Link>
-              <Link
-                href="/dashboard"
-                className={
-                  pathname === "/dashboard"
-                    ? "text-blue-600 font-medium"
-                    : "text-gray-500 hover:text-gray-700"
-                }
-              >
-                Dashboard
-              </Link>
+                Logga ut
+              </button>
             </div>
           )}
         </div>
 
+        {/* Bottom row: navigation tabs */}
         {user && (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500">{user.email}</span>
-            {user.is_pro && (
-              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
-                PRO
-              </span>
-            )}
-            <button
-              onClick={onSignOut}
-              className="text-sm text-gray-500 hover:text-gray-700 border rounded-lg px-3 py-1"
+          <div className="flex gap-1">
+            <Link
+              href="/"
+              className={`flex-1 text-center py-2 rounded-lg text-sm font-medium transition-colors ${
+                pathname === "/"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
             >
-              Logga ut
-            </button>
+              Tidsregistrering
+            </Link>
+            <Link
+              href="/dashboard"
+              className={`flex-1 text-center py-2 rounded-lg text-sm font-medium transition-colors ${
+                pathname === "/dashboard"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Rapport & Statistik
+            </Link>
           </div>
         )}
       </div>

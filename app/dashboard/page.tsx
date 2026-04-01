@@ -37,12 +37,9 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar user={user} onSignOut={handleSignOut} />
-      <main className="max-w-3xl mx-auto p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <PdfExport entries={entries} />
-        </div>
+      <main className="max-w-3xl mx-auto p-4 sm:p-6 space-y-5">
         <Dashboard entries={entries} />
+        <PdfExport entries={entries} />
       </main>
     </div>
   );

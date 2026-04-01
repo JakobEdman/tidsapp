@@ -40,6 +40,19 @@ export function deleteEntry(id: string, userId: string): void {
   saveAll(all);
 }
 
+export function updateEntry(
+  id: string,
+  userId: string,
+  updates: Partial<Omit<TimeEntry, "id" | "created_at" | "user_id">>
+): void {
+  const all = getAll();
+  const index = all.findIndex((e) => e.id === id && e.user_id === userId);
+  if (index !== -1) {
+    all[index] = { ...all[index], ...updates };
+    saveAll(all);
+  }
+}
+
 export function getEntryCount(userId: string): number {
   return getAll().filter((e) => e.user_id === userId).length;
 }

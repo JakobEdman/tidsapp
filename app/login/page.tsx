@@ -21,7 +21,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-6">
         {/* Welcome section */}
         <div className="text-center space-y-3">
-          <h1 className="text-4xl font-bold text-blue-600">Tidsapp AI</h1>
+          <h1 className="text-4xl font-bold text-blue-600">Tidsapp</h1>
           <p className="text-gray-600 text-lg">
             Registrera din arbetstid enkelt med r&ouml;sten
           </p>

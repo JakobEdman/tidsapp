@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tidsapp AI - Tidsredovisning med röstinspelning",
+  title: "Tidsapp - Tidsredovisning med röstinspelning",
   description: "Registrera arbetstid enkelt med röstinspelning och AI",
 };
 
