@@ -8,7 +8,7 @@ import { TimeEntry, User } from "@/lib/types";
 import Navbar from "@/components/Navbar";
 import AccountModal from "@/components/AccountModal";
 import FeedbackButton from "@/components/FeedbackButton";
-import { PDFDocument, StandardFonts } from "pdf-lib";
+import PdfExport from "@/components/PdfExport";
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -73,151 +73,6 @@ export default function DashboardPage() {
 
   const maxHours = Math.max(...Object.values(hoursPerProject), 1);
 
-  const exportPDF = async () => {
-    if (filteredEntries.length === 0) {
-      alert("Inga poster i valt datumintervall.");
-      return;
-    }
-
-    const pdfDoc = await PDFDocument.create();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-    let page = pdfDoc.addPage([600, 800]);
-    let y = 750;
-
-    const addNewPageIfNeeded = () => {
-      if (y < 80) {
-        page = pdfDoc.addPage([600, 800]);
-        y = 750;
-      }
-    };
-
-    page.drawText("Tidsrapport", { x: 50, y, size: 22, font: fontBold });
-    y -= 22;
-    page.drawText(`Period: ${fromDate} - ${toDate}`, {
-      x: 50,
-      y,
-      size: 10,
-      font,
-    });
-    y -= 14;
-    if (selectedProject !== "all") {
-      page.drawText(`Kund/Projekt: ${selectedProject}`, {
-        x: 50,
-        y,
-        size: 10,
-        font,
-      });
-      y -= 14;
-    }
-    page.drawText(`Skapad: ${new Date().toLocaleDateString("sv-SE")}`, {
-      x: 50,
-      y,
-      size: 10,
-      font,
-    });
-    y -= 25;
-
-    page.drawText("Datum", { x: 50, y, size: 10, font: fontBold });
-    page.drawText("Projekt", { x: 120, y, size: 10, font: fontBold });
-    page.drawText("Aktivitet", { x: 230, y, size: 10, font: fontBold });
-    page.drawText("Tid", { x: 400, y, size: 10, font: fontBold });
-    page.drawText("Timmar", { x: 490, y, size: 10, font: fontBold });
-    y -= 5;
-    page.drawLine({ start: { x: 50, y }, end: { x: 550, y }, thickness: 1 });
-    y -= 15;
-
-    const sorted = [...filteredEntries].sort((a, b) => {
-      const da = a.entry_date || a.created_at.slice(0, 10);
-      const db = b.entry_date || b.created_at.slice(0, 10);
-      return da.localeCompare(db);
-    });
-
-    let pdfTotalHours = 0;
-    sorted.forEach((e) => {
-      addNewPageIfNeeded();
-
-      const date = e.entry_date || e.created_at.slice(0, 10);
-      const project =
-        (e.project || "Övrigt").length > 14
-          ? (e.project || "Övrigt").substring(0, 14) + ".."
-          : e.project || "Övrigt";
-      const activity =
-        (e.activity || "").length > 22
-          ? (e.activity || "").substring(0, 22) + ".."
-          : e.activity || "";
-      const time =
-        e.start_time && e.end_time ? `${e.start_time}-${e.end_time}` : "-";
-      const hours = parseFloat(e.duration) || 0;
-      pdfTotalHours += hours;
-
-      page.drawText(date, { x: 50, y, size: 8, font });
-      page.drawText(project, { x: 120, y, size: 8, font });
-      page.drawText(activity, { x: 230, y, size: 8, font });
-      page.drawText(time, { x: 400, y, size: 8, font });
-      page.drawText(hours.toFixed(1) + "h", { x: 490, y, size: 8, font });
-      y -= 16;
-    });
-
-    y -= 10;
-    addNewPageIfNeeded();
-    page.drawLine({
-      start: { x: 50, y: y + 5 },
-      end: { x: 550, y: y + 5 },
-      thickness: 1,
-    });
-    page.drawText(`Antal poster: ${sorted.length}`, {
-      x: 50,
-      y: y - 10,
-      size: 10,
-      font,
-    });
-    page.drawText("Totalt:", {
-      x: 400,
-      y: y - 10,
-      size: 12,
-      font: fontBold,
-    });
-    page.drawText(pdfTotalHours.toFixed(1) + "h", {
-      x: 490,
-      y: y - 10,
-      size: 12,
-      font: fontBold,
-    });
-
-    if (selectedProject === "all" && Object.keys(hoursPerProject).length > 1) {
-      y -= 40;
-      addNewPageIfNeeded();
-      page.drawText("Summering per projekt:", {
-        x: 50,
-        y,
-        size: 11,
-        font: fontBold,
-      });
-      y -= 18;
-      Object.entries(hoursPerProject)
-        .sort(([, a], [, b]) => b - a)
-        .forEach(([proj, hrs]) => {
-          addNewPageIfNeeded();
-          page.drawText(proj, { x: 50, y, size: 9, font });
-          page.drawText(hrs.toFixed(1) + "h", { x: 490, y, size: 9, font });
-          y -= 14;
-        });
-    }
-
-    const pdfBytes = await pdfDoc.save();
-    const blob = new Blob([pdfBytes as BlobPart], {
-      type: "application/pdf",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const suffix = selectedProject !== "all" ? `-${selectedProject}` : "";
-    a.download = `tidsrapport-${fromDate}-till-${toDate}${suffix}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   if (loading) return <div className="p-6 text-center">Laddar...</div>;
   if (!user) return null;
@@ -363,22 +218,12 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* PDF Export */}
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <h2 className="font-semibold text-base mb-2">Exportera PDF</h2>
-          <p className="text-sm text-gray-500 mb-3">
-            {filteredEntries.length} poster ·{" "}
-            {selectedProject !== "all" ? selectedProject : "alla projekt"} ·{" "}
-            {fromDate} — {toDate}
-          </p>
-          <button
-            onClick={exportPDF}
-            disabled={filteredEntries.length === 0}
-            className="w-full bg-green-600 active:bg-green-700 disabled:bg-gray-400 text-white px-5 py-3 rounded-lg font-medium transition-colors text-base"
-          >
-            Ladda ner PDF
-          </button>
-        </div>
+        <PdfExport
+          entries={filteredEntries}
+          fromDate={fromDate}
+          toDate={toDate}
+          selectedProject={selectedProject}
+        />
 
         <FeedbackButton user={user} />
       </main>
