@@ -10,7 +10,10 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "Ingen text skickad" }, { status: 400 });
     }
 
+    const today = new Date().toISOString().slice(0, 10);
+
     const prompt = `Extrahera tidsdata från följande svenska text. Tolka vad personen säger om sitt arbete.
+Dagens datum är ${today}.
 
 Text: "${text}"
 
@@ -20,8 +23,16 @@ Returnera BARA giltig JSON (inget annat) med dessa fält:
   "activity": "vad personen gjorde",
   "start_time": "HH:MM (eller tom sträng om ej nämnt)",
   "end_time": "HH:MM (eller tom sträng om ej nämnt)",
-  "duration": "antal timmar som decimaltal (t.ex. '2' eller '1.5')"
+  "duration": "antal timmar som decimaltal (t.ex. '2' eller '1.5')",
+  "entry_date": "YYYY-MM-DD"
 }
+
+Viktiga regler för entry_date:
+- Om personen nämner ett specifikt datum (t.ex. "den 8 april", "igår", "i fredags"), beräkna rätt datum utifrån dagens datum ${today}.
+- "igår" = dagen innan ${today}
+- "i förrgår" = två dagar innan ${today}
+- "i måndags", "i tisdags" etc = senaste sådana veckodagen innan idag
+- Om inget datum nämns, använd dagens datum ${today}.
 
 Om start- och sluttid anges men inte duration, beräkna duration.
 Om bara duration anges, lämna start_time och end_time tomma.`;

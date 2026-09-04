@@ -12,29 +12,56 @@ interface EditEntryProps {
 export default function EditEntry({ entry, onSave, onCancel }: EditEntryProps) {
   const [project, setProject] = useState(entry.project);
   const [activity, setActivity] = useState(entry.activity);
+  const [entryDate, setEntryDate] = useState(
+    entry.entry_date || entry.created_at.slice(0, 10)
+  );
   const [startTime, setStartTime] = useState(entry.start_time);
   const [endTime, setEndTime] = useState(entry.end_time);
   const [duration, setDuration] = useState(entry.duration);
+  const [manualDuration, setManualDuration] = useState(false);
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
-  const handleSave = () => {
-    let calcDuration = duration;
-    if (!calcDuration && startTime && endTime) {
-      const [sh, sm] = startTime.split(":").map(Number);
-      const [eh, em] = endTime.split(":").map(Number);
-      const diff = eh * 60 + em - (sh * 60 + sm);
-      calcDuration = (diff / 60).toFixed(1);
-    }
+  const calcDurationFromTimes = (start: string, end: string): string => {
+    if (!start || !end) return "";
+    const [sh, sm] = start.split(":").map(Number);
+    const [eh, em] = end.split(":").map(Number);
+    const diff = eh * 60 + em - (sh * 60 + sm);
+    if (diff <= 0) return "";
+    return (diff / 60).toFixed(1);
+  };
 
+  const handleStartTimeChange = (val: string) => {
+    setStartTime(val);
+    if (!manualDuration && val && endTime) {
+      const calc = calcDurationFromTimes(val, endTime);
+      if (calc) setDuration(calc);
+    }
+  };
+
+  const handleEndTimeChange = (val: string) => {
+    setEndTime(val);
+    if (!manualDuration && startTime && val) {
+      const calc = calcDurationFromTimes(startTime, val);
+      if (calc) setDuration(calc);
+    }
+  };
+
+  const handleDurationChange = (val: string) => {
+    setDuration(val);
+    setManualDuration(true);
+  };
+
+  const handleSave = () => {
     onSave(entry.id, {
       project: project || "Övrigt",
       activity,
+      entry_date: entryDate,
       start_time: startTime,
       end_time: endTime,
-      duration: calcDuration,
+      duration: duration || calcDurationFromTimes(startTime, endTime),
     });
   };
 
@@ -82,6 +109,9 @@ export default function EditEntry({ entry, onSave, onCancel }: EditEntryProps) {
             setStartTime(pData.parsed.start_time || startTime);
             setEndTime(pData.parsed.end_time || endTime);
             setDuration(pData.parsed.duration || duration);
+            if (pData.parsed.entry_date) {
+              setEntryDate(pData.parsed.entry_date);
+            }
           }
         } catch {
           alert("Kunde inte bearbeta inspelningen");
@@ -108,75 +138,83 @@ export default function EditEntry({ entry, onSave, onCancel }: EditEntryProps) {
     <div className="p-4 border-2 border-blue-300 rounded-xl bg-blue-50 space-y-3">
       <h3 className="font-semibold text-sm text-blue-800">Redigera tidspost</h3>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-xs text-gray-500">Projekt</label>
-          <input
-            type="text"
-            value={project}
-            onChange={(e) => setProject(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
-          />
-        </div>
-        <div>
-          <label className="text-xs text-gray-500">Aktivitet</label>
-          <input
-            type="text"
-            value={activity}
-            onChange={(e) => setActivity(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
-          />
-        </div>
+      <div>
+        <label className="text-xs text-gray-500 block mb-1">Datum</label>
+        <input
+          type="date"
+          value={entryDate}
+          onChange={(e) => setEntryDate(e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base bg-white"
+        />
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 block mb-1">Projekt</label>
+        <input
+          type="text"
+          value={project}
+          onChange={(e) => setProject(e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base bg-white"
+        />
+      </div>
+      <div>
+        <label className="text-xs text-gray-500 block mb-1">Aktivitet</label>
+        <textarea
+          value={activity}
+          onChange={(e) => setActivity(e.target.value)}
+          rows={4}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base bg-white resize-y min-h-[6rem]"
+        />
       </div>
 
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="text-xs text-gray-500">Start</label>
+          <label className="text-xs text-gray-500 block mb-1">Start</label>
           <input
             type="time"
             value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+            onChange={(e) => handleStartTimeChange(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base bg-white"
           />
         </div>
         <div>
-          <label className="text-xs text-gray-500">Slut</label>
+          <label className="text-xs text-gray-500 block mb-1">Slut</label>
           <input
             type="time"
             value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+            onChange={(e) => handleEndTimeChange(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base bg-white"
           />
         </div>
         <div>
-          <label className="text-xs text-gray-500">Timmar</label>
+          <label className="text-xs text-gray-500 block mb-1">Timmar</label>
           <input
             type="number"
             step="0.5"
             value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+            onChange={(e) => handleDurationChange(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base bg-white"
           />
         </div>
       </div>
 
       {/* Re-record with voice */}
-      <div className="border-t pt-3">
+      <div className="border-t border-blue-200 pt-3">
         <p className="text-xs text-gray-500 mb-2">
-          Eller spela in nytt meddelande som ers&auml;tter alla f&auml;lt:
+          Eller spela in nytt meddelande som ersätter alla fält:
         </p>
         {!recording ? (
           <button
             onClick={startReRecord}
             disabled={processing}
-            className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            className="bg-orange-500 active:bg-orange-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
-            {processing ? "Bearbetar..." : "Spela in p\u00e5 nytt"}
+            {processing ? "Bearbetar..." : "Spela in på nytt"}
           </button>
         ) : (
           <button
             onClick={stopReRecord}
-            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium animate-pulse transition-colors"
+            className="bg-red-600 active:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium animate-pulse transition-colors"
           >
             Stoppa inspelning
           </button>
@@ -184,16 +222,16 @@ export default function EditEntry({ entry, onSave, onCancel }: EditEntryProps) {
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-2 border-t pt-3">
+      <div className="flex gap-2 border-t border-blue-200 pt-3">
         <button
           onClick={handleSave}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="flex-1 bg-blue-600 active:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
         >
           Spara
         </button>
         <button
           onClick={onCancel}
-          className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="flex-1 bg-gray-200 active:bg-gray-300 text-gray-700 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
         >
           Avbryt
         </button>

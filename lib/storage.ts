@@ -1,58 +1,76 @@
+import { supabase } from "./supabase";
 import { TimeEntry } from "./types";
 
-const STORAGE_KEY = "tidsapp_entries";
+export async function getEntries(userId: string): Promise<TimeEntry[]> {
+  const { data, error } = await supabase
+    .from("time_entries")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
 
-function getAll(): TimeEntry[] {
-  if (typeof window === "undefined") return [];
-  const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : [];
+  if (error || !data) return [];
+
+  return data.map((e) => ({
+    id: e.id,
+    project: e.project,
+    activity: e.activity,
+    start_time: e.start_time || "",
+    end_time: e.end_time || "",
+    duration: e.duration || "",
+    entry_date: e.entry_date || "",
+    notes: e.notes || "",
+    user_id: e.user_id,
+    created_at: e.created_at,
+  }));
 }
 
-function saveAll(entries: TimeEntry[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-}
-
-export function getEntries(userId: string): TimeEntry[] {
-  return getAll()
-    .filter((e) => e.user_id === userId)
-    .sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-}
-
-export function addEntry(
+export async function addEntry(
   entry: Omit<TimeEntry, "id" | "created_at">
-): TimeEntry {
-  const all = getAll();
-  const newEntry: TimeEntry = {
-    ...entry,
-    id: crypto.randomUUID(),
-    created_at: new Date().toISOString(),
-  };
-  all.push(newEntry);
-  saveAll(all);
-  return newEntry;
+): Promise<TimeEntry | null> {
+  const { data, error } = await supabase
+    .from("time_entries")
+    .insert({
+      user_id: entry.user_id,
+      project: entry.project || "Övrigt",
+      activity: entry.activity || "",
+      start_time: entry.start_time || "",
+      end_time: entry.end_time || "",
+      duration: entry.duration || "",
+      entry_date: entry.entry_date || new Date().toISOString().slice(0, 10),
+      notes: entry.notes || "",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("addEntry error:", error.message, error.details, error.hint);
+    return null;
+  }
+  if (!data) return null;
+  return data as TimeEntry;
 }
 
-export function deleteEntry(id: string, userId: string): void {
-  const all = getAll().filter((e) => !(e.id === id && e.user_id === userId));
-  saveAll(all);
+export async function deleteEntry(
+  id: string,
+  userId: string
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("time_entries")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", userId);
+  return !error;
 }
 
-export function updateEntry(
+export async function updateEntry(
   id: string,
   userId: string,
   updates: Partial<Omit<TimeEntry, "id" | "created_at" | "user_id">>
-): void {
-  const all = getAll();
-  const index = all.findIndex((e) => e.id === id && e.user_id === userId);
-  if (index !== -1) {
-    all[index] = { ...all[index], ...updates };
-    saveAll(all);
-  }
-}
-
-export function getEntryCount(userId: string): number {
-  return getAll().filter((e) => e.user_id === userId).length;
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("time_entries")
+    .update(updates)
+    .eq("id", id)
+    .eq("user_id", userId);
+  return !error;
 }

@@ -6,17 +6,21 @@ import EditEntry from "./EditEntry";
 
 interface EntryListProps {
   entries: TimeEntry[];
-  onDelete: (id: string) => void;
-  onUpdate: (id: string, updates: Partial<TimeEntry>) => void;
+  onDelete: (id: string) => void | Promise<void>;
+  onUpdate: (id: string, updates: Partial<TimeEntry>) => void | Promise<void>;
 }
 
-export default function EntryList({ entries, onDelete, onUpdate }: EntryListProps) {
+export default function EntryList({
+  entries,
+  onDelete,
+  onUpdate,
+}: EntryListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   if (entries.length === 0) {
     return (
-      <p className="text-gray-500 text-sm py-4">
-        Inga tidsposter &auml;nnu. Spela in eller l&auml;gg till manuellt.
+      <p className="text-gray-500 text-sm py-4 text-center">
+        Inga tidsposter ännu. Spela in eller lägg till manuellt.
       </p>
     );
   }
@@ -37,32 +41,34 @@ export default function EntryList({ entries, onDelete, onUpdate }: EntryListProp
         ) : (
           <div
             key={entry.id}
-            className="p-4 border rounded-xl shadow-sm hover:shadow transition-shadow bg-white"
+            className="p-4 border border-gray-200 rounded-xl bg-white shadow-sm"
           >
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <div className="font-semibold text-lg">{entry.project}</div>
-                <div className="text-gray-700">{entry.activity}</div>
-                <div className="text-sm text-gray-500 mt-1">
-                  {entry.start_time && entry.end_time
-                    ? `${entry.start_time} - ${entry.end_time}`
-                    : ""}
-                  {entry.duration && ` (${entry.duration}h)`}
+            <div className="flex justify-between items-start gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-base break-words">
+                  {entry.project}
                 </div>
-                <div className="text-xs text-gray-400 mt-1">
-                  {new Date(entry.created_at).toLocaleDateString("sv-SE")}
+                <div className="text-gray-600 text-sm whitespace-pre-wrap break-words">
+                  {entry.activity}
+                </div>
+                <div className="text-sm text-gray-500 mt-1">
+                  {entry.entry_date || entry.created_at.slice(0, 10)}
+                  {entry.start_time && entry.end_time
+                    ? ` · ${entry.start_time}–${entry.end_time}`
+                    : ""}
+                  {entry.duration ? ` · ${entry.duration}h` : ""}
                 </div>
               </div>
-              <div className="flex gap-2 ml-2">
+              <div className="flex gap-3 shrink-0">
                 <button
                   onClick={() => setEditingId(entry.id)}
-                  className="text-blue-500 hover:text-blue-700 text-sm font-medium transition-colors"
+                  className="text-blue-600 active:text-blue-800 text-sm font-medium"
                 >
                   Redigera
                 </button>
                 <button
                   onClick={() => onDelete(entry.id)}
-                  className="text-red-500 hover:text-red-700 text-sm font-medium transition-colors"
+                  className="text-red-500 active:text-red-700 text-sm font-medium"
                 >
                   Ta bort
                 </button>

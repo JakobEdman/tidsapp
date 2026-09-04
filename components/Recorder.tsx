@@ -9,6 +9,7 @@ interface RecorderProps {
     start_time: string;
     end_time: string;
     duration: string;
+    entry_date: string;
   }) => void;
 }
 
@@ -60,7 +61,16 @@ export default function Recorder({ onEntryParsed }: RecorderProps) {
           const pData = await pRes.json();
 
           if (pData.parsed) {
-            onEntryParsed(pData.parsed);
+            onEntryParsed({
+              project: pData.parsed.project || "Övrigt",
+              activity: pData.parsed.activity || "",
+              start_time: pData.parsed.start_time || "",
+              end_time: pData.parsed.end_time || "",
+              duration: pData.parsed.duration || "",
+              entry_date:
+                pData.parsed.entry_date ||
+                new Date().toISOString().slice(0, 10),
+            });
           }
         } catch {
           setTranscript("Kunde inte bearbeta inspelningen");
@@ -85,19 +95,19 @@ export default function Recorder({ onEntryParsed }: RecorderProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
+      <div>
         {!recording ? (
           <button
             onClick={startRecording}
             disabled={processing}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
+            className="w-full bg-blue-600 active:bg-blue-700 disabled:bg-gray-400 text-white px-5 py-3 rounded-lg font-medium transition-colors text-base"
           >
             {processing ? "Bearbetar..." : "Spela in"}
           </button>
         ) : (
           <button
             onClick={stopRecording}
-            className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg font-medium animate-pulse transition-colors"
+            className="w-full bg-red-600 active:bg-red-700 text-white px-5 py-3 rounded-lg font-medium animate-pulse transition-colors text-base"
           >
             Stoppa inspelning
           </button>
@@ -105,7 +115,7 @@ export default function Recorder({ onEntryParsed }: RecorderProps) {
       </div>
 
       {transcript && (
-        <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+        <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
           Transkriberat: &quot;{transcript}&quot;
         </p>
       )}

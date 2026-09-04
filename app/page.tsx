@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getSession, signOut } from "@/lib/auth";
 import { getEntries, addEntry, deleteEntry, updateEntry } from "@/lib/storage";
@@ -9,12 +9,22 @@ import Navbar from "@/components/Navbar";
 import Recorder from "@/components/Recorder";
 import EntryForm from "@/components/EntryForm";
 import EntryList from "@/components/EntryList";
+import InstructionsPanel from "@/components/InstructionsPanel";
+import AccountModal from "@/components/AccountModal";
+import FeedbackButton from "@/components/FeedbackButton";
+import ReleaseNoteModal from "@/components/ReleaseNoteModal";
 
 export default function HomePage() {
   const [user, setUser] = useState<User | null>(null);
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAccount, setShowAccount] = useState(false);
   const router = useRouter();
+
+  const refreshEntries = useCallback(async (userId: string) => {
+    const data = await getEntries(userId);
+    setEntries(data);
+  }, []);
 
   useEffect(() => {
     const session = getSession();
@@ -23,36 +33,35 @@ export default function HomePage() {
       return;
     }
     setUser(session.user);
-    refreshEntries(session.user.id);
-    setLoading(false);
-  }, [router]);
+    refreshEntries(session.user.id).then(() => setLoading(false));
+  }, [router, refreshEntries]);
 
-  const refreshEntries = (userId: string) => {
-    setEntries(getEntries(userId));
-  };
-
-  const handleNewEntry = (parsed: {
+  const handleNewEntry = async (parsed: {
     project: string;
     activity: string;
     start_time: string;
     end_time: string;
     duration: string;
+    entry_date: string;
   }) => {
     if (!user) return;
-    addEntry({ ...parsed, user_id: user.id });
-    refreshEntries(user.id);
+    const result = await addEntry({ ...parsed, user_id: user.id });
+    if (!result) {
+      alert("Kunde inte spara posten. Kontrollera att du är inloggad och försök igen.");
+    }
+    await refreshEntries(user.id);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!user) return;
-    deleteEntry(id, user.id);
-    refreshEntries(user.id);
+    await deleteEntry(id, user.id);
+    await refreshEntries(user.id);
   };
 
-  const handleUpdate = (id: string, updates: Partial<TimeEntry>) => {
+  const handleUpdate = async (id: string, updates: Partial<TimeEntry>) => {
     if (!user) return;
-    updateEntry(id, user.id, updates);
-    refreshEntries(user.id);
+    await updateEntry(id, user.id, updates);
+    await refreshEntries(user.id);
   };
 
   const handleSignOut = () => {
@@ -60,30 +69,60 @@ export default function HomePage() {
     router.push("/login");
   };
 
-  if (loading) return <div className="p-6">Laddar...</div>;
+  if (loading) return <div className="p-6 text-center">Laddar...</div>;
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar user={user} onSignOut={handleSignOut} />
-      <main className="max-w-3xl mx-auto p-4 sm:p-6 space-y-5">
-        <div className="bg-white p-5 rounded-xl border space-y-4">
-          <h2 className="font-semibold">Ny tidspost</h2>
+    <div className="min-h-dvh bg-gray-50">
+      <Navbar
+        user={user}
+        onSignOut={handleSignOut}
+        onOpenAccount={() => setShowAccount(true)}
+      />
+      <main className="px-4 pt-5 pb-8 space-y-5 max-w-lg mx-auto">
+        <InstructionsPanel />
+
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
+          <h2 className="font-semibold text-base">Ny tidspost</h2>
           <Recorder onEntryParsed={handleNewEntry} />
-          <EntryForm onSubmit={handleNewEntry} />
+          <div className="border-t border-gray-100 pt-3">
+            <EntryForm onSubmit={handleNewEntry} />
+          </div>
         </div>
 
         <div>
-          <h2 className="font-semibold mb-3">
-            Tidsposter ({entries.length})
-          </h2>
-          <EntryList
-            entries={entries}
-            onDelete={handleDelete}
-            onUpdate={handleUpdate}
-          />
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="font-semibold text-base">
+              Tidsposter ({entries.length})
+            </h2>
+            {entries.length > 5 && (
+              <span className="text-xs text-gray-500">Scrolla för att se fler</span>
+            )}
+          </div>
+          <div className="max-h-[26rem] overflow-y-auto rounded-xl">
+            <EntryList
+              entries={entries}
+              onDelete={handleDelete}
+              onUpdate={handleUpdate}
+            />
+          </div>
         </div>
+
+        <FeedbackButton user={user} />
       </main>
+
+      <ReleaseNoteModal user={user} />
+
+      {showAccount && (
+        <AccountModal
+          user={user}
+          onClose={() => setShowAccount(false)}
+          onUpdated={(updated) => {
+            setUser(updated);
+            setShowAccount(false);
+          }}
+        />
+      )}
     </div>
   );
 }
