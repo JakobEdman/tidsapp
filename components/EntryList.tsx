@@ -8,12 +8,14 @@ interface EntryListProps {
   entries: TimeEntry[];
   onDelete: (id: string) => void | Promise<void>;
   onUpdate: (id: string, updates: Partial<TimeEntry>) => void | Promise<void>;
+  knownProjects: string[];
 }
 
 export default function EntryList({
   entries,
   onDelete,
   onUpdate,
+  knownProjects,
 }: EntryListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -37,6 +39,7 @@ export default function EntryList({
               setEditingId(null);
             }}
             onCancel={() => setEditingId(null)}
+            knownProjects={knownProjects}
           />
         ) : (
           <div

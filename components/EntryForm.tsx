@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { normalizeProject } from "@/lib/projects";
 
 interface EntryFormProps {
   onSubmit: (entry: {
@@ -11,9 +12,13 @@ interface EntryFormProps {
     duration: string;
     entry_date: string;
   }) => void;
+  knownProjects: string[];
 }
 
-export default function EntryForm({ onSubmit }: EntryFormProps) {
+export default function EntryForm({
+  onSubmit,
+  knownProjects,
+}: EntryFormProps) {
   const today = new Date().toISOString().slice(0, 10);
   const [project, setProject] = useState("");
   const [activity, setActivity] = useState("");
@@ -58,7 +63,7 @@ export default function EntryForm({ onSubmit }: EntryFormProps) {
     e.preventDefault();
 
     onSubmit({
-      project: project || "Övrigt",
+      project: normalizeProject(project) || "Övrigt",
       activity,
       start_time: startTime,
       end_time: endTime,
@@ -96,14 +101,22 @@ export default function EntryForm({ onSubmit }: EntryFormProps) {
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 block mb-1">Projekt</label>
+            <label className="text-xs text-gray-500 block mb-1">
+              Projekt / kund
+            </label>
             <input
               type="text"
-              placeholder="t.ex. Kundnamn"
+              list="projektlista-nytt"
+              placeholder="Välj befintlig eller skriv ny"
               value={project}
               onChange={(e) => setProject(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base"
             />
+            <datalist id="projektlista-nytt">
+              {knownProjects.map((p) => (
+                <option key={p} value={p} />
+              ))}
+            </datalist>
           </div>
           <div>
             <label className="text-xs text-gray-500 block mb-1">Aktivitet</label>

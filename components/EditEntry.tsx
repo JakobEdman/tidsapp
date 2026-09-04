@@ -2,14 +2,21 @@
 
 import { useState, useRef } from "react";
 import { TimeEntry } from "@/lib/types";
+import { normalizeProject } from "@/lib/projects";
 
 interface EditEntryProps {
   entry: TimeEntry;
   onSave: (id: string, updates: Partial<TimeEntry>) => void;
   onCancel: () => void;
+  knownProjects: string[];
 }
 
-export default function EditEntry({ entry, onSave, onCancel }: EditEntryProps) {
+export default function EditEntry({
+  entry,
+  onSave,
+  onCancel,
+  knownProjects,
+}: EditEntryProps) {
   const [project, setProject] = useState(entry.project);
   const [activity, setActivity] = useState(entry.activity);
   const [entryDate, setEntryDate] = useState(
@@ -56,7 +63,8 @@ export default function EditEntry({ entry, onSave, onCancel }: EditEntryProps) {
 
   const handleSave = () => {
     onSave(entry.id, {
-      project: project || "Övrigt",
+      // Skrivet för hand är avsiktligt — städa bara bort blanksteg, snäpp inte.
+      project: normalizeProject(project) || "Övrigt",
       activity,
       entry_date: entryDate,
       start_time: startTime,
@@ -99,7 +107,7 @@ export default function EditEntry({ entry, onSave, onCancel }: EditEntryProps) {
           const pRes = await fetch("/api/parse", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: tData.text }),
+            body: JSON.stringify({ text: tData.text, knownProjects }),
           });
           const pData = await pRes.json();
 
@@ -149,13 +157,21 @@ export default function EditEntry({ entry, onSave, onCancel }: EditEntryProps) {
       </div>
 
       <div>
-        <label className="text-xs text-gray-500 block mb-1">Projekt</label>
+        <label className="text-xs text-gray-500 block mb-1">
+          Projekt / kund
+        </label>
         <input
           type="text"
+          list="projektlista-redigera"
           value={project}
           onChange={(e) => setProject(e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base bg-white"
         />
+        <datalist id="projektlista-redigera">
+          {knownProjects.map((p) => (
+            <option key={p} value={p} />
+          ))}
+        </datalist>
       </div>
       <div>
         <label className="text-xs text-gray-500 block mb-1">Aktivitet</label>

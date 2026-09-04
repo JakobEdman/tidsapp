@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { normalizeProject } from "./projects";
 import { TimeEntry } from "./types";
 
 export async function getEntries(userId: string): Promise<TimeEntry[]> {
@@ -31,7 +32,8 @@ export async function addEntry(
     .from("time_entries")
     .insert({
       user_id: entry.user_id,
-      project: entry.project || "Övrigt",
+      // Sista spärren mot blanksteg som gör "Kalle " till en egen rad i PDF:en
+      project: normalizeProject(entry.project) || "Övrigt",
       activity: entry.activity || "",
       start_time: entry.start_time || "",
       end_time: entry.end_time || "",
@@ -67,9 +69,14 @@ export async function updateEntry(
   userId: string,
   updates: Partial<Omit<TimeEntry, "id" | "created_at" | "user_id">>
 ): Promise<boolean> {
+  const stadade =
+    updates.project === undefined
+      ? updates
+      : { ...updates, project: normalizeProject(updates.project) || "Övrigt" };
+
   const { error } = await supabase
     .from("time_entries")
-    .update(updates)
+    .update(stadade)
     .eq("id", id)
     .eq("user_id", userId);
   return !error;

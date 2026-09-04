@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getSession, signOut } from "@/lib/auth";
 import { getEntries, addEntry, deleteEntry, updateEntry } from "@/lib/storage";
+import { knownProjects as harledProjekt } from "@/lib/projects";
 import { TimeEntry, User } from "@/lib/types";
 import Navbar from "@/components/Navbar";
 import Recorder from "@/components/Recorder";
@@ -25,6 +26,10 @@ export default function HomePage() {
     const data = await getEntries(userId);
     setEntries(data);
   }, []);
+
+  // Kunderna användaren redan har. Skickas till tolkningen så att en ny
+  // inspelning matchar en befintlig kund istället för att skapa en variant.
+  const projektlista = useMemo(() => harledProjekt(entries), [entries]);
 
   useEffect(() => {
     const session = getSession();
@@ -84,9 +89,12 @@ export default function HomePage() {
 
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
           <h2 className="font-semibold text-base">Ny tidspost</h2>
-          <Recorder onEntryParsed={handleNewEntry} />
+          <Recorder
+            onEntryParsed={handleNewEntry}
+            knownProjects={projektlista}
+          />
           <div className="border-t border-gray-100 pt-3">
-            <EntryForm onSubmit={handleNewEntry} />
+            <EntryForm onSubmit={handleNewEntry} knownProjects={projektlista} />
           </div>
         </div>
 
@@ -104,6 +112,7 @@ export default function HomePage() {
               entries={entries}
               onDelete={handleDelete}
               onUpdate={handleUpdate}
+              knownProjects={projektlista}
             />
           </div>
         </div>

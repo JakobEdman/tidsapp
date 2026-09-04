@@ -11,9 +11,13 @@ interface RecorderProps {
     duration: string;
     entry_date: string;
   }) => void;
+  knownProjects: string[];
 }
 
-export default function Recorder({ onEntryParsed }: RecorderProps) {
+export default function Recorder({
+  onEntryParsed,
+  knownProjects,
+}: RecorderProps) {
   const [recording, setRecording] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -56,7 +60,7 @@ export default function Recorder({ onEntryParsed }: RecorderProps) {
           const pRes = await fetch("/api/parse", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: tData.text }),
+            body: JSON.stringify({ text: tData.text, knownProjects }),
           });
           const pData = await pRes.json();
 

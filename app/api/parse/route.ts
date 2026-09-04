@@ -1,21 +1,44 @@
 import OpenAI from "openai";
 import { NextRequest } from "next/server";
+import { matchProject, normalizeProject } from "@/lib/projects";
 
 export async function POST(req: NextRequest) {
   try {
-    const { text } = await req.json();
+    const { text, knownProjects } = await req.json();
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     if (!text) {
       return Response.json({ error: "Ingen text skickad" }, { status: 400 });
     }
 
+    const kanda: string[] = Array.isArray(knownProjects)
+      ? knownProjects.map(normalizeProject).filter(Boolean)
+      : [];
+
     const today = new Date().toISOString().slice(0, 10);
+
+    // Utan den befintliga kundlistan hittar modellen på en ny stavning varje
+    // gång, och samma kund hamnar på flera rader vid utskrift.
+    const projektRegler = kanda.length
+      ? `Personen har sedan tidigare dessa projekt/kunder:
+${kanda.map((p) => `- ${p}`).join("\n")}
+
+Regler för "project":
+- Syftar personen på någon i listan ovan, returnera namnet EXAKT som det står där, teckenrätt.
+- Detta gäller även om personen säger det lite annorlunda, med annan böjning eller med ett litet uttalsfel.
+- Orden "projekt" och "kund" är inledningsord och ingår INTE i namnet. Säger personen "projekt Fager" är namnet "Fager".
+- Bara om det är någon som verkligen inte finns i listan får du returnera ett nytt namn.
+- Nämns ingen alls, returnera "Övrigt".`
+      : `Regler för "project":
+- Orden "projekt" och "kund" är inledningsord och ingår INTE i namnet. Säger personen "projekt Fager" är namnet "Fager".
+- Nämns inget projekt eller någon kund, returnera "Övrigt".`;
 
     const prompt = `Extrahera tidsdata från följande svenska text. Tolka vad personen säger om sitt arbete.
 Dagens datum är ${today}.
 
 Text: "${text}"
+
+${projektRegler}
 
 Returnera BARA giltig JSON (inget annat) med dessa fält:
 {
@@ -48,6 +71,12 @@ Om bara duration anges, lämna start_time och end_time tomma.`;
     // Extract JSON from response (handle markdown code blocks)
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+
+    // Skyddsnät: modellen följer inte alltid listan. Snäpp mot befintlig kund
+    // så att en variantstavning inte blir en ny rad vid utskrift.
+    if (parsed.project) {
+      parsed.project = matchProject(String(parsed.project), kanda);
+    }
 
     return Response.json({ parsed });
   } catch (error) {
