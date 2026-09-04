@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { TimeEntry } from "@/lib/types";
+import { knownProjects } from "@/lib/projects";
 import { PDFDocument, PDFFont, PDFPage, StandardFonts } from "pdf-lib";
+
+const ALLA = "__alla__";
 
 interface PdfExportProps {
   entries: TimeEntry[];
@@ -66,13 +69,24 @@ export default function PdfExport({ entries }: PdfExportProps) {
 
   const [fromDate, setFromDate] = useState(thirtyDaysAgo);
   const [toDate, setToDate] = useState(today);
+  const [valtProjekt, setValtProjekt] = useState(ALLA);
 
   const dateOf = (e: TimeEntry) => e.entry_date || e.created_at.slice(0, 10);
 
-  const filteredEntries = entries.filter((e) => {
-    const d = dateOf(e);
-    return d >= fromDate && d <= toDate;
-  });
+  // "Övrigt" saknas i knownProjects men behöver gå att skriva ut för sig.
+  const projektval = useMemo(() => {
+    const lista = knownProjects(entries);
+    if (entries.some((e) => e.project === "Övrigt")) lista.push("Övrigt");
+    return lista;
+  }, [entries]);
+
+  const filteredEntries = entries
+    .filter((e) => {
+      const d = dateOf(e);
+      if (d < fromDate || d > toDate) return false;
+      return valtProjekt === ALLA || e.project === valtProjekt;
+    })
+    .sort((a, b) => dateOf(a).localeCompare(dateOf(b)));
 
   const exportPDF = async () => {
     if (filteredEntries.length === 0) {
@@ -115,6 +129,10 @@ export default function PdfExport({ entries }: PdfExportProps) {
         font: fontBold,
       });
       y -= 22;
+      if (valtProjekt !== ALLA) {
+        page.drawText(valtProjekt, { x: MARGIN, y, size: 14, font: fontBold });
+        y -= 16;
+      }
       page.drawText(`Period: ${fromDate} – ${toDate}`, {
         x: MARGIN,
         y,
@@ -244,7 +262,11 @@ export default function PdfExport({ entries }: PdfExportProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `tidsrapport-${fromDate}-till-${toDate}.pdf`;
+    const filnamnsdel =
+      valtProjekt === ALLA
+        ? "alla"
+        : valtProjekt.toLowerCase().replace(/[^a-z0-9åäö]+/g, "-");
+    a.download = `tidsrapport-${filnamnsdel}-${fromDate}-till-${toDate}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -252,6 +274,24 @@ export default function PdfExport({ entries }: PdfExportProps) {
   return (
     <div className="bg-white p-5 rounded-xl border space-y-4">
       <h2 className="font-semibold">Exportera tidsrapport (PDF)</h2>
+
+      <div>
+        <label className="text-xs text-gray-500 block mb-1">
+          Projekt / kund
+        </label>
+        <select
+          value={valtProjekt}
+          onChange={(e) => setValtProjekt(e.target.value)}
+          className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+        >
+          <option value={ALLA}>Alla projekt samlat</option>
+          {projektval.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -276,7 +316,8 @@ export default function PdfExport({ entries }: PdfExportProps) {
 
       <div className="flex items-center justify-between">
         <span className="text-sm text-gray-500">
-          {filteredEntries.length} poster i vald period
+          {filteredEntries.length} poster
+          {valtProjekt === ALLA ? " i vald period" : ` för ${valtProjekt}`}
         </span>
         <button
           onClick={exportPDF}
